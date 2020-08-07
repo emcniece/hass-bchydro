@@ -1,10 +1,6 @@
 # Home Assistant BCHydro Sensor
 
-🚧 In development, but you can copy `sensor.py` down to your HASS install:
-
-```sh
-
-```
+🚧 In development, but you can copy `sensor.py` down to your HASS install: just copy-paste `sensor.py` into a file name the same inside your HASS `custom_components/bchydro` directory. Edit `bchydro_username` and `bchydro_password` to match your BCHydro account.
 
 ## BCHydro Data Formats
 
@@ -100,6 +96,7 @@ for point in root.findall('Series')[0].findall('Point'):
 - [ ] Unit tests + CI
 - [ ] Figure out how to read secrets
 - [ ] Implement HASS config flow for browser-based entry of secrets
+- [ ] Hass.io, integration, Supervisor, HACS compatibility
 - [ ] Add more sensors for `days_since_billing`, `consumption_to_date`, `cost_to_date`, `estimated_consumption`, `estimated_cost`
 - [ ] Handle `ESTIMATED` datapoints
     - Parse dates and only take `latest_usage` from days matching the current timestamp?
