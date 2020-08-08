@@ -1,9 +1,11 @@
 import logging
 import string
 import requests
+from datetime import timedelta
 import xml.etree.ElementTree as ET
 from homeassistant.helpers.entity import Entity
-from datetime import timedelta
+
+from homeassistant.const import DEVICE_CLASS_POWER, ENERGY_KILO_WATT_HOUR, ATTR_DATE
 
 SCAN_INTERVAL = timedelta(minutes=5)
 _LOGGER = logging.getLogger(__name__)
@@ -11,8 +13,12 @@ _LOGGER = logging.getLogger(__name__)
 
 DOMAIN = "bchydro"
 URL_LOGIN = "https://app.bchydro.com/sso/UI/Login"
-URL_GET_USAGE = "https://app.bchydro.com/evportlet/web/account-profile-data.html"
 URL_ACCT_INFO = "https://app.bchydro.com/evportlet/web/global-data.html"
+URL_GET_USAGE = "https://app.bchydro.com/evportlet/web/account-profile-data.html"
+
+# This URL has more detail than URL_GET_USAGE but seems to require more headers to access.
+# Not used at the moment, but ideally it will replace URL_GET_USAGE.
+# URL_GET_CONSUMPTION = "https://app.bchydro.com/evportlet/web/consumption-data.html"
 
 # DO NOT PUBLISH THIS FILE WITH THESE VARS FILLED OUT!!
 #   Update these 2 variables with your BCHydro username and password if you
@@ -22,37 +28,99 @@ bchydro_password = "pw"
 
 
 def setup_platform(hass, config, add_entities, discovery_info=None):
+    # async def async_setup_platform(hass, config, async_add_entities, discovery_info=None):
+
     """Setup the sensor platform."""
     # How do we get secrets from HASS passed in here?
-    # Should the API be instantiated here, or later in each sensor?
     api = BCHydroApi(bchydro_username, bchydro_password)
-    add_entities([BCHydroUsageSensor(api)])
+    add_entities(
+        [
+            BCHydroSensor(
+                api,
+                "latest_usage",
+                "Latest Usage",
+                DEVICE_CLASS_POWER,
+                ENERGY_KILO_WATT_HOUR,
+            ),
+            BCHydroSensor(
+                api,
+                "consumption_to_date",
+                "Consumption to Date",
+                DEVICE_CLASS_POWER,
+                ENERGY_KILO_WATT_HOUR,
+            ),
+            BCHydroSensor(
+                api,
+                "cost_to_date",
+                "Cost to Date",
+                "expense",  # no class for "cost"
+                "$",
+            ),
+            BCHydroSensor(
+                api, "billing_period_end", "Next Billing Period", ATTR_DATE, ""
+            ),
+        ]
+    )
 
 
-class BCHydroUsageSensor(Entity):
-    def __init__(self, api):
+class BCHydroSensor(Entity):
+    def __init__(self, api, unique_id, name, device_class, unit_of_measurement):
         """Initialize the sensor."""
         self._api = api
-        self._state = None
+        self._unique_id = unique_id
+        self._name = name
+        self._device_class = device_class
+        self._unit_of_measurement = unit_of_measurement
+
+    @property
+    def device_info(self):
+        """Return device info."""
+        return {
+            "identifiers": {
+                # Serial numbers are unique identifiers within a specific domain
+                (DOMAIN, self.unique_id)
+            },
+            "name": self.name,
+        }
+
+    @property
+    def unique_id(self):
+        """Return the unique id."""
+        return self._unique_id
+
+    @property
+    def should_poll(self):
+        """No polling needed for a demo sensor."""
+        return True
+
+    @property
+    def device_class(self):
+        """Return the device class of the sensor."""
+        return self._device_class
 
     @property
     def name(self):
         """Return the name of the sensor."""
-        return "BC Hydro Usage"
+        return self._name
 
     @property
     def state(self):
         """Return the state of the sensor."""
-        return self._state
+        if self._unique_id == "latest_usage":
+            return self._api.get_latest_usage()
+
+        elif self._unique_id == "consumption_to_date":
+            return self._api.data["rates"]["consumption_to_date"]
+
+        elif self._unique_id == "cost_to_date":
+            return self._api.data["rates"]["cost_to_date"]
+
+        elif self._unique_id == "billing_period_end":
+            return self._api.data["rates"]["billing_period_end"]
 
     @property
     def unit_of_measurement(self):
-        return "kWh"
-
-    def update(self):
-        """Fetch new state data for the sensor."""
-        latest = self._api.latest_usage()
-        self._state = latest
+        return self._unit_of_measurement
 
 
 class BCHydroApi:
@@ -63,7 +131,9 @@ class BCHydroApi:
         self._account_number = None
         self._slid = None
         self._cookies = None
+        self.data = {"usage": [], "rates": {}}
         self.login()
+        self.fetch_data()
 
     def call_api(self, method, url, **kwargs):
         payload = kwargs.get("params") or kwargs.get("data")
@@ -116,24 +186,9 @@ class BCHydroApi:
             _LOGGER.error("SLID/Account Number parse error: %s", e)
             raise
 
-    def latest_usage(self):
+    def fetch_data(self):
         """Fetch new state data for the sensor."""
-        latest_usage = None
-
-        response = self.call_api(
-            "get",
-            URL_GET_USAGE,
-            headers={
-                "X-Requested-With": "XMLHttpRequest",
-                "Content-Type": "application/x-www-form-urlencoded",
-            },
-            data={
-                "Slid": self._slid,
-                "Account": self._account_number,
-                "ValidityStart": "2015-09-03T00:00:00.000-07:00",
-                "ValidityEnd": "9999-12-31T00:00:00.000-08:00",
-            },
-        )
+        response = self.call_api("get", URL_GET_USAGE)
 
         try:
             resultingCleanString = "".join(
@@ -144,15 +199,40 @@ class BCHydroApi:
             for point in root.findall("Series")[0].findall("Point"):
                 # Todo: == 'ACTUAL', and ensure the date matches now
                 if point.get("quality") != "INVALID":
-                    latest_usage = point.get("value")
-                    _LOGGER.debug("Found point: %s", latest_usage)
+                    self.data["usage"].append(
+                        {
+                            "quality": point.get("quality"),
+                            "value": point.get("value"),
+                            "cost": point.get("cost"),
+                        }
+                    )
 
-        except ET.ParseError:
-            _LOGGER.error("Unable to parse XML from string")
-        except IndexError:
-            _LOGGER.error("Usage data malformed: couldn't find point series")
+        except ET.ParseError as e:
+            _LOGGER.error("Unable to parse XML from string: %s", e)
+        except IndexError as e:
+            _LOGGER.error("Usage data malformed: couldn't find point series: %s", e)
         except Exception as e:
             _LOGGER.error("Usage data malformed: unexpected error: %s", e)
             raise
 
-        return latest_usage
+        try:
+            rates = root.find("Rates")
+            self.data["rates"] = {
+                "billing_period_start": rates.get("bpStart"),
+                "billing_period_end": rates.get("bpEnd"),
+                "consumption_to_date": rates.get("cons2date").strip("kWh"),
+                "cost_to_date": rates.get("cost2date").strip("$"),
+                "estimated_consumption": rates.get("estCons").strip("kWh"),
+                "estimated_cost": rates.get("estCost").strip("$"),
+            }
+        except Exception as e:
+            _LOGGER.error("Data reformatting error: %s", e)
+            raise
+
+        return self.data
+
+    def get_latest_usage(self):
+        return self.data["usage"][-1]["value"]
+
+    def get_latest_cost(self):
+        return self.data["usage"][-1]["cost"]
