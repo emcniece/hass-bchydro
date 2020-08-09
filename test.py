@@ -1,15 +1,16 @@
 import os
+import asyncio
+
 from sensor import BCHydroApi
 
-a = BCHydroApi(os.environ.get("BCH_USER"), os.environ.get("BCH_PASS"))
-a.login()
-a.fetch_data()
+a = BCHydroApi()
 
-print("data:")
-print(a.data)
 
-print("latest value")
-print(a.get_latest_usage())
+async def main():
+    await a.authenticate(os.environ.get("BCH_USER"), os.environ.get("BCH_PASS"))
+    print(a._slid)
 
-print("latest cost")
-print(a.data["rates"]["consumption_to_date"])
+    await a.fetch_data()
+    print(a.data)
+
+asyncio.run(main())
