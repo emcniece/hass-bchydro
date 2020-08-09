@@ -12,14 +12,13 @@ from homeassistant.const import CONF_PASSWORD, CONF_USERNAME
 
 
 # Validation of the user's configuration
-PLATFORM_SCHEMA = PLATFORM_SCHEMA.extend({
-    vol.Required(CONF_USERNAME): cv.string,
-    vol.Required(CONF_PASSWORD): cv.string,
-})
+PLATFORM_SCHEMA = PLATFORM_SCHEMA.extend(
+    {vol.Required(CONF_USERNAME): cv.string, vol.Required(CONF_PASSWORD): cv.string}
+)
 
 SCAN_INTERVAL = timedelta(minutes=5)
 _LOGGER = logging.getLogger(__name__)
-#logging.basicConfig(level=logging.DEBUG)
+# logging.basicConfig(level=logging.DEBUG)
 
 DOMAIN = "bchydro"
 URL_LOGIN = "https://app.bchydro.com/sso/UI/Login"
@@ -29,6 +28,7 @@ URL_GET_USAGE = "https://app.bchydro.com/evportlet/web/account-profile-data.html
 # This URL has more detail than URL_GET_USAGE but seems to require more headers to access.
 # Not used at the moment, but ideally it will replace URL_GET_USAGE.
 # URL_GET_CONSUMPTION = "https://app.bchydro.com/evportlet/web/consumption-data.html"
+
 
 def setup_platform(hass, config, add_entities, discovery_info=None):
     """Setup the sensor platform."""
@@ -197,7 +197,6 @@ class BCHydroApi:
                 filter(lambda x: x in string.printable, response.text)
             )
             root = ET.fromstring(resultingCleanString)
-
 
             for point in root.findall("Series")[0].findall("Point"):
                 # Todo: == 'ACTUAL', and ensure the date matches now
