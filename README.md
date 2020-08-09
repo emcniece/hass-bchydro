@@ -2,6 +2,34 @@
 
 🚧 In development, but you can copy `sensor.py` down to your HASS install: just copy-paste `sensor.py` into a file name the same inside your HASS `custom_components/bchydro` directory. Edit `bchydro_username` and `bchydro_password` to match your BCHydro account.
 
+## Installation
+
+Place these files inside a directory in your custom_components directory:
+
+```sh
+cd config/custom_components
+git clone git@github.com:emcniece/hass-bchydro.git
+```
+
+Then edit your configuration.yml to include this under sensors:
+
+```yml
+sensors:
+  - platform: bchydro
+    username: !secret bchydro_username
+    password: !secret bchydro_password
+```
+
+Then edit your secrets.yml to include your BCHydro account details:
+
+```yml
+bchydro_username: myemail@domain.com
+bchydro_password: mypassword
+```
+
+Then restart your HASS installation and configure your new entites!
+
+
 ## BCHydro Data Formats
 
 Several calls are made to the BCHydro website for varying purposes.

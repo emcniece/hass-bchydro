@@ -3,9 +3,18 @@ import string
 import requests
 from datetime import timedelta
 import xml.etree.ElementTree as ET
+import voluptuous as vol
 from homeassistant.helpers.entity import Entity
-
 from homeassistant.const import DEVICE_CLASS_POWER, ENERGY_KILO_WATT_HOUR, ATTR_DATE
+import homeassistant.helpers.config_validation as cv
+from homeassistant.helpers.config_validation import PLATFORM_SCHEMA
+from homeassistant.const import CONF_PASSWORD, CONF_USERNAME
+
+
+# Validation of the user's configuration
+PLATFORM_SCHEMA = PLATFORM_SCHEMA.extend(
+    {vol.Required(CONF_USERNAME): cv.string, vol.Required(CONF_PASSWORD): cv.string}
+)
 
 SCAN_INTERVAL = timedelta(minutes=5)
 _LOGGER = logging.getLogger(__name__)
@@ -20,19 +29,13 @@ URL_GET_USAGE = "https://app.bchydro.com/evportlet/web/account-profile-data.html
 # Not used at the moment, but ideally it will replace URL_GET_USAGE.
 # URL_GET_CONSUMPTION = "https://app.bchydro.com/evportlet/web/consumption-data.html"
 
-# DO NOT PUBLISH THIS FILE WITH THESE VARS FILLED OUT!!
-#   Update these 2 variables with your BCHydro username and password if you
-#   absolutely need to hack this together...
-bchydro_username = "email"
-bchydro_password = "pw"
-
 
 def setup_platform(hass, config, add_entities, discovery_info=None):
-    # async def async_setup_platform(hass, config, async_add_entities, discovery_info=None):
-
     """Setup the sensor platform."""
-    # How do we get secrets from HASS passed in here?
+    bchydro_username = config[CONF_USERNAME]
+    bchydro_password = config.get(CONF_PASSWORD)
     api = BCHydroApi(bchydro_username, bchydro_password)
+
     add_entities(
         [
             BCHydroSensor(
@@ -53,7 +56,7 @@ def setup_platform(hass, config, add_entities, discovery_info=None):
                 api,
                 "cost_to_date",
                 "Cost to Date",
-                "expense",  # no class for "cost"
+                "expense",  # no class for "cost"?
                 "$",
             ),
             BCHydroSensor(
@@ -89,11 +92,6 @@ class BCHydroSensor(Entity):
         return self._unique_id
 
     @property
-    def should_poll(self):
-        """No polling needed for a demo sensor."""
-        return True
-
-    @property
     def device_class(self):
         """Return the device class of the sensor."""
         return self._device_class
@@ -104,23 +102,28 @@ class BCHydroSensor(Entity):
         return self._name
 
     @property
+    def unit_of_measurement(self):
+        return self._unit_of_measurement
+
+    @property
     def state(self):
         """Return the state of the sensor."""
         if self._unique_id == "latest_usage":
             return self._api.get_latest_usage()
 
         elif self._unique_id == "consumption_to_date":
-            return self._api.data["rates"]["consumption_to_date"]
+            return self._api.data.get("rates").get("consumption_to_date")
 
         elif self._unique_id == "cost_to_date":
-            return self._api.data["rates"]["cost_to_date"]
+            return self._api.data.get("rates").get("cost_to_date")
 
         elif self._unique_id == "billing_period_end":
-            return self._api.data["rates"]["billing_period_end"]
+            return self._api.data.get("rates").get("billing_period_end")
 
-    @property
-    def unit_of_measurement(self):
-        return self._unit_of_measurement
+    def update(self):
+        # Todo: move this to an api in __init__.py
+        self._api.login()
+        self._api.fetch_data()
 
 
 class BCHydroApi:
@@ -132,8 +135,6 @@ class BCHydroApi:
         self._slid = None
         self._cookies = None
         self.data = {"usage": [], "rates": {}}
-        self.login()
-        self.fetch_data()
 
     def call_api(self, method, url, **kwargs):
         payload = kwargs.get("params") or kwargs.get("data")
@@ -187,8 +188,9 @@ class BCHydroApi:
             raise
 
     def fetch_data(self):
-        """Fetch new state data for the sensor."""
+        """Fetch new state data to store on the API"""
         response = self.call_api("get", URL_GET_USAGE)
+        new_usage = []
 
         try:
             resultingCleanString = "".join(
@@ -199,13 +201,14 @@ class BCHydroApi:
             for point in root.findall("Series")[0].findall("Point"):
                 # Todo: == 'ACTUAL', and ensure the date matches now
                 if point.get("quality") != "INVALID":
-                    self.data["usage"].append(
+                    new_usage.append(
                         {
                             "quality": point.get("quality"),
                             "value": point.get("value"),
                             "cost": point.get("cost"),
                         }
                     )
+            self.data["usage"] = new_usage
 
         except ET.ParseError as e:
             _LOGGER.error("Unable to parse XML from string: %s", e)
@@ -232,7 +235,7 @@ class BCHydroApi:
         return self.data
 
     def get_latest_usage(self):
-        return self.data["usage"][-1]["value"]
+        return self.data["usage"][-1]["value"] if len(self.data["usage"]) else None
 
     def get_latest_cost(self):
-        return self.data["usage"][-1]["cost"]
+        return self.data["usage"][-1]["cost"] if len(self.data["usage"]) else None
