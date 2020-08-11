@@ -2,7 +2,8 @@
   "domain": "bchydro",
   "name": "BC Hydro",
   "documentation": "https://github.com/emcniece/hass-bchydro",
-  "dependencies": ["beautifulsoup4"],
-  "codeowners": [],
-  "requirements": []
+  "config_flow": true,
+  "dependencies": [],
+  "requirements": ["beautifulsoup4", "bchydro==0.3"],
+  "codeowners": ["@emc"]
 }

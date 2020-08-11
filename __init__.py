@@ -3,6 +3,7 @@ import logging
 from typing import Any, Dict
 import aiohttp
 import async_timeout
+from datetime import timedelta
 
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import CONF_PASSWORD, CONF_USERNAME
@@ -11,8 +12,9 @@ from homeassistant.helpers.entity import Entity
 from homeassistant.helpers.typing import ConfigType, HomeAssistantType
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator
 
-from api import BCHydroApi
 from .const import DATA_CLIENT, DATA_COORDINATOR, DOMAIN
+
+from bchydro import BCHydroApi, BCHydroDailyUsage
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -25,7 +27,7 @@ async def async_setup(hass: HomeAssistantType, config: ConfigType) -> bool:
 async def async_setup_entry(hass: HomeAssistantType, entry: ConfigEntry) -> bool:
     """Set up BCHdydro from a config entry."""
 
-    client = BCHdydroApi()
+    client = BCHydroApi()
 
     try:
         await client.authenticate(entry.data[CONF_USERNAME], entry.data[CONF_PASSWORD])
@@ -33,11 +35,10 @@ async def async_setup_entry(hass: HomeAssistantType, entry: ConfigEntry) -> bool
         _LOGGER.warning(exception)
         raise ConfigEntryNotReady from exception
 
-    async def async_update_data() -> OVODailyUsage:
-        """Fetch data from OVO Energy."""
-        now = datetime.utcnow()
+    async def async_update_data() -> BCHydroDailyUsage:
+        """Fetch data from BCHydro."""
         async with async_timeout.timeout(10):
-            return await client.get_daily_usage(now.strftime("%Y-%m"))
+            return await client.get_daily_usage()
 
     coordinator = DataUpdateCoordinator(
         hass,
@@ -67,7 +68,7 @@ async def async_setup_entry(hass: HomeAssistantType, entry: ConfigEntry) -> bool
 
 
 async def async_unload_entry(hass: HomeAssistantType, entry: ConfigType) -> bool:
-    """Unload OVO Energy config entry."""
+    """Unload BCHydro config entry."""
     # Unload sensors
     await hass.config_entries.async_forward_entry_unload(entry, "sensor")
 
@@ -76,8 +77,8 @@ async def async_unload_entry(hass: HomeAssistantType, entry: ConfigType) -> bool
     return True
 
 
-class BCHydroEnergyEntity(Entity):
-    """Defines a base OVO Energy entity."""
+class BCHydroEntity(Entity):
+    """Defines a base BCHydro entity."""
 
     def __init__(
         self,
@@ -87,7 +88,7 @@ class BCHydroEnergyEntity(Entity):
         name: str,
         icon: str,
     ) -> None:
-        """Initialize the OVO Energy entity."""
+        """Initialize the BCHydro entity."""
         self._coordinator = coordinator
         self._client = client
         self._key = key
@@ -121,7 +122,7 @@ class BCHydroEnergyEntity(Entity):
         return False
 
     async def async_update(self) -> None:
-        """Update OVO Energy entity."""
+        """Update BCHydro entity."""
         await self._coordinator.async_request_refresh()
 
     async def async_added_to_hass(self) -> None:
@@ -129,3 +130,18 @@ class BCHydroEnergyEntity(Entity):
         self.async_on_remove(
             self._coordinator.async_add_listener(self.async_write_ha_state)
         )
+
+
+class BCHydroDeviceEntity(BCHydroEntity):
+    """Defines a BCHydro device entity."""
+
+    @property
+    def device_info(self) -> Dict[str, Any]:
+        """Return device information about this BCHydro instance."""
+        return {
+            "identifiers": {(DOMAIN, self._client.account.evpSlid)},
+            "manufacturer": "BCHydro",
+            "model": "0.3",
+            "name": "BCHydro Readings",
+            "entry_type": "service",
+        }
