@@ -141,7 +141,7 @@ class BCHydroDeviceEntity(BCHydroEntity):
         return {
             "identifiers": {(DOMAIN, self._client.account.evpSlid)},
             "manufacturer": "BCHydro",
-            "model": "0.3",
+            "model": "0.4",
             "name": "BCHydro Readings",
             "entry_type": "service",
         }

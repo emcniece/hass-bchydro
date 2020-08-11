@@ -4,6 +4,6 @@
   "documentation": "https://github.com/emcniece/hass-bchydro",
   "config_flow": true,
   "dependencies": [],
-  "requirements": ["beautifulsoup4", "bchydro==0.3"],
+  "requirements": ["beautifulsoup4", "bchydro==0.4"],
   "codeowners": ["@emc"]
 }
