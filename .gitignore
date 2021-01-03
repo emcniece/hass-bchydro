@@ -1,3 +1,4 @@
 __pycache__/
 .env
 tmp/
+sftp-config.json
