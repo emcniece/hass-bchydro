@@ -1,9 +1,10 @@
 {
-  "domain": "bchydro",
+  "domain": "hass-bchydro",
   "name": "BC Hydro",
   "documentation": "https://github.com/emcniece/hass-bchydro",
+  "issue_tracker": "https://github.com/emcniece/hass-bchydro/issues",
   "config_flow": true,
   "dependencies": [],
-  "requirements": ["beautifulsoup4", "bchydro==0.4"],
-  "codeowners": ["@emc"]
+  "requirements": ["beautifulsoup4", "bchydro==0.7"],
+  "codeowners": ["@emcniece"]
 }
