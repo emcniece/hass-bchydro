@@ -1,5 +1,5 @@
 {
-  "domain": "hass-bchydro",
+  "domain": "bchydro",
   "name": "BC Hydro",
   "documentation": "https://github.com/emcniece/hass-bchydro",
   "issue_tracker": "https://github.com/emcniece/hass-bchydro/issues",

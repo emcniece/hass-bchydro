@@ -12,7 +12,7 @@ from homeassistant.helpers.entity import Entity
 from homeassistant.helpers.typing import ConfigType, HomeAssistantType
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator
 
-from .const import DATA_CLIENT, DATA_COORDINATOR, DOMAIN
+from .const import DATA_CLIENT, DATA_COORDINATOR, DOMAIN, VERSION
 
 from bchydro import BCHydroApi, BCHydroDailyUsage
 
@@ -26,11 +26,11 @@ async def async_setup(hass: HomeAssistantType, config: ConfigType) -> bool:
 
 async def async_setup_entry(hass: HomeAssistantType, entry: ConfigEntry) -> bool:
     """Set up BCHdydro from a config entry."""
-
-    client = BCHydroApi()
+    client = BCHydroApi(entry.data[CONF_USERNAME], entry.data[CONF_PASSWORD])
 
     try:
-        await client.authenticate(entry.data[CONF_USERNAME], entry.data[CONF_PASSWORD])
+        _LOGGER.warning('BCHydro authenticating')
+        await client.authenticate()
     except aiohttp.ClientError as exception:
         _LOGGER.warning(exception)
         raise ConfigEntryNotReady from exception
@@ -141,7 +141,7 @@ class BCHydroDeviceEntity(BCHydroEntity):
         return {
             "identifiers": {(DOMAIN, self._client.account.evpSlid)},
             "manufacturer": "BCHydro",
-            "model": "0.4",
-            "name": "BCHydro Readings",
+            "model": VERSION,
+            "name": "BCHydro",
             "entry_type": "service",
         }
