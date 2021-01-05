@@ -1,3 +1,6 @@
 flake8
 black
 pytest
+beautifulsoup4
+mypy
+bchydro==0.3
