@@ -35,7 +35,7 @@ class BCHydroFlowHandler(ConfigFlow, domain=DOMAIN):
 
         try:
             client = BCHydroApi(self._username, self._password)
-            authenticated = await client.authenticate()
+            await client.refresh()
 
         except Exception as ex:
             _LOGGER.error("Unable to connect to BCHydro: %s", ex)

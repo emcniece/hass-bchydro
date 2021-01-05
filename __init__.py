@@ -29,8 +29,8 @@ async def async_setup_entry(hass: HomeAssistantType, entry: ConfigEntry) -> bool
     client = BCHydroApi(entry.data[CONF_USERNAME], entry.data[CONF_PASSWORD])
 
     try:
-        _LOGGER.warning('BCHydro authenticating')
-        await client.authenticate()
+        _LOGGER.debug('BCHydro authenticating')
+        await client.refresh()
     except aiohttp.ClientError as exception:
         _LOGGER.warning(exception)
         raise ConfigEntryNotReady from exception
@@ -38,7 +38,7 @@ async def async_setup_entry(hass: HomeAssistantType, entry: ConfigEntry) -> bool
     async def async_update_data() -> BCHydroDailyUsage:
         """Fetch data from BCHydro."""
         async with async_timeout.timeout(10):
-            return await client.get_daily_usage()
+            return await client.get_usage()
 
     coordinator = DataUpdateCoordinator(
         hass,
