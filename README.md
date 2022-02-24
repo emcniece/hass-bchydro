@@ -2,7 +2,7 @@
 
 🚧 In development, but you can copy `sensor.py` down to your HASS install: just copy-paste `sensor.py` into a file name the same inside your HASS `custom_components/bchydro` directory. Edit `bchydro_username` and `bchydro_password` to match your BCHydro account.
 
-## This fork fixes issue with the manifest
+## This fork fixes an issue with the manifest
 
 core-2021.6 required some changes. Currently it is working with core-2022.2.9
 
