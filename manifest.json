@@ -5,10 +5,7 @@
   "documentation": "https://github.com/sascha432/hass-bchydro",
   "dependencies": [],
   "codeowners": [],
-  "requirements": [
-    "flake8==4.0.1",
-    "black==22.1.0"
-  ],
+  "requirements": [],
   "iot_class": "cloud_polling",
   "config_flow": false
 }
