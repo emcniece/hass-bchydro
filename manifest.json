@@ -1,8 +1,11 @@
 {
+  "version": "0.1.0",
   "domain": "bchydro",
   "name": "BC Hydro",
-  "documentation": "https://github.com/emcniece/hass-bchydro",
+  "documentation": "https://github.com/sascha432/hass-bchydro",
   "dependencies": [],
   "codeowners": [],
-  "requirements": []
+  "requirements": [],
+  "iot_class": "cloud_polling",
+  "config_flow": false
 }

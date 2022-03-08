@@ -1,6 +1,14 @@
+# NOTE:
+
+2022/03/08 - Recently I am receiving 401 Unauthorized, but this could be related to my account. I will update this note as soon as I had the time to investigate it further.
+
 # Home Assistant BCHydro Sensor
 
 🚧 In development, but you can copy `sensor.py` down to your HASS install: just copy-paste `sensor.py` into a file name the same inside your HASS `custom_components/bchydro` directory. Edit `bchydro_username` and `bchydro_password` to match your BCHydro account.
+
+## This fork fixes an issue with the manifest
+
+core-2021.6 required some changes. Currently it is working with core-2022.2.9
 
 ## Installation
 
